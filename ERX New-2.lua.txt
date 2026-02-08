@@ -1,3 +1,7 @@
+-- The old ERX source that Dante leaked in August 2025
+
+
+
 FROM_LOADER = true
 
 if not FROM_LOADER then
@@ -6201,4 +6205,5 @@ elseif PlaceId == 2534724415 then
 	end
 else
 	warn("Game is not supported.")
+
 end
