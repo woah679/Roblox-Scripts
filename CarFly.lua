@@ -246,7 +246,7 @@ game:GetService("UserInputService").InputBegan:Connect(function(i,g)
 
 	elseif code==Enum.KeyCode.K then
 		if not kWarningShown then
-			m.Text="Warning: This may lag your PC and may have a lot of bugs. Click \"K\" one more to use this! If you want to not use this set your speed to 60 or 250."
+			m.Text="Warning: This may lag your PC and may have a lot of bugs. Click \"K\" one more to use this! If you want to not use this set your speed to 75 or 250."
 			m.TextColor3=Color3.fromRGB(255,0,0); m.TextSize=16*1.5; kWarningShown=true; kWarningActive=true
 		else
 			currentSpeed=3000; updateSpeedDisplay()
@@ -266,4 +266,5 @@ end)
 
 end) -- pcall end
 if not ok then warn(err) end
+
 
