@@ -47,9 +47,9 @@ keysList.BackgroundTransparency=1
 keysList.Text="Keys:"..
 "\n1. \"-\"  -25 speed"..
 "\n2. \"=\"  +25 speed"..
-"\n3. \"[\"  60 speed"..
+"\n3. \"[\"  75 speed"..
 "\n4. \"]\"  250 speed"..
-"\n5. \"k\"  4000 speed (buggy)"
+"\n5. \"k\"  3000 speed (buggy)"
 keysList.TextColor3=Color3.fromRGB(255,0,0)
 keysList.TextSize=14*1.5
 keysList.Font=Enum.Font.GothamSemibold
@@ -237,8 +237,8 @@ game:GetService("UserInputService").InputBegan:Connect(function(i,g)
 		repeatConn=game:GetService("RunService").Heartbeat:Connect(doRepeat)
 
 	elseif code==Enum.KeyCode.LeftBracket then
-		currentSpeed=60; updateSpeedDisplay()
-		m.Text="Speed set to 60"; m.TextColor3=Color3.fromRGB(255,0,0); task.wait(1); m.Text=""
+		currentSpeed=75; updateSpeedDisplay()
+		m.Text="Speed set to 75"; m.TextColor3=Color3.fromRGB(255,0,0); task.wait(1); m.Text=""
 
 	elseif code==Enum.KeyCode.RightBracket then
 		currentSpeed=250; updateSpeedDisplay()
@@ -249,8 +249,8 @@ game:GetService("UserInputService").InputBegan:Connect(function(i,g)
 			m.Text="Warning: This may lag your PC and may have a lot of bugs. Click \"K\" one more to use this! If you want to not use this set your speed to 60 or 250."
 			m.TextColor3=Color3.fromRGB(255,0,0); m.TextSize=16*1.5; kWarningShown=true; kWarningActive=true
 		else
-			currentSpeed=4000; updateSpeedDisplay()
-			m.Text="Speed set to 4000"; m.TextColor3=Color3.fromRGB(255,0,0); kWarningShown=false; kWarningActive=false; task.wait(1); m.Text=""
+			currentSpeed=3000; updateSpeedDisplay()
+			m.Text="Speed set to 3000"; m.TextColor3=Color3.fromRGB(255,0,0); kWarningShown=false; kWarningActive=false; task.wait(1); m.Text=""
 		end
 	end
 end)
@@ -266,3 +266,4 @@ end)
 
 end) -- pcall end
 if not ok then warn(err) end
+
