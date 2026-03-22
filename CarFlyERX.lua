@@ -158,7 +158,7 @@ local ok, err = pcall(function()
         Step  = 25,
         Value = {
             Min     = 25,
-            Max     = 1000,
+            Max     = 3000,
             Default = 250,
         },
         Callback = function(value)
@@ -172,7 +172,6 @@ local ok, err = pcall(function()
         Icon     = "turtle",
         Callback = function()
             currentSpeed = 75
-			SpeedSlider:SetMax(1000)
             SpeedSlider:Set(75)
             WindUI:Notify({ Title = "Speed", Content = "Speed set to 75", Duration = 1.5, Icon = "turtle" })
         end,
@@ -184,7 +183,6 @@ local ok, err = pcall(function()
         Icon     = "rabbit",
         Callback = function()
             currentSpeed = 250
-			SpeedSlider:SetMax(1000)
             SpeedSlider:Set(250)
             WindUI:Notify({ Title = "Speed", Content = "Speed set to 250", Duration = 1.5, Icon = "rabbit" })
         end,
@@ -196,7 +194,6 @@ local ok, err = pcall(function()
         Icon     = "zap",
         Callback = function()
             currentSpeed = 750
-			SpeedSlider:SetMax(1000)
             SpeedSlider:Set(750)
             WindUI:Notify({ Title = "Speed", Content = "Speed set to 750", Duration = 1.5, Icon = "zap" })
         end,
