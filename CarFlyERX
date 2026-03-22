@@ -1,4 +1,3 @@
-
 repeat task.wait() until _G.WindUI and _G.Functions
 local ok, err = pcall(function()
     if getgenv()._carfly_windui then return warn("CarFly already loaded.") end
@@ -55,16 +54,37 @@ local ok, err = pcall(function()
         vl.P        = 9e4
         vl.Velocity = Vector3.new()
 
+        -- Cache ControlModule once so we can read the mobile joystick MoveVector
+        local controls
+        local ok2, cm = pcall(function()
+            return require(game.Players.LocalPlayer.PlayerScripts
+                :WaitForChild("PlayerModule")):GetControls()
+        end)
+        if ok2 then controls = cm end
+
         hb = game:GetService("RunService").Heartbeat:Connect(function()
             if not on then if vl then vl.Velocity = Vector3.new() end return end
             if not h.Sit then clean() return end
-            local t   = Vector3.new()
             local u   = game:GetService("UserInputService")
             local cam = workspace.CurrentCamera.CFrame
-            if u:IsKeyDown(Enum.KeyCode.W) then t += cam.LookVector  *  currentSpeed end
-            if u:IsKeyDown(Enum.KeyCode.S) then t += cam.LookVector  * -currentSpeed end
-            if u:IsKeyDown(Enum.KeyCode.A) then t += cam.RightVector * -currentSpeed end
-            if u:IsKeyDown(Enum.KeyCode.D) then t += cam.RightVector *  currentSpeed end
+
+            -- Keyboard
+            local fwd  = (u:IsKeyDown(Enum.KeyCode.W) and 1 or 0)
+                       - (u:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+            local side = (u:IsKeyDown(Enum.KeyCode.D) and 1 or 0)
+                       - (u:IsKeyDown(Enum.KeyCode.A) and 1 or 0)
+
+            -- Mobile joystick: Roblox routes the on-screen thumbstick through
+            -- the ControlModule's MoveVector (X = strafe, Z = forward/back).
+            -- This is the only reliable cross-platform source for mobile input.
+            if fwd == 0 and side == 0 and controls then
+                local mv = controls:GetMoveVector()
+                fwd  = -mv.Z  -- negative Z = forward in camera space
+                side =  mv.X
+            end
+
+            local t = cam.LookVector * fwd * currentSpeed
+                    + cam.RightVector * side * currentSpeed
             if vl then vl.Velocity = t end
             if gy then gy.CFrame   = cam end
         end)
@@ -122,7 +142,7 @@ local ok, err = pcall(function()
 
     CarFlyTab:Paragraph({
         Title = "Controls",
-        Desc  = "W A S D  →  fly in camera direction\n"
+        Desc  = "W A S D / Mobile joystick  →  fly in camera direction\n"
               .."Use the Speed section below to adjust fly speed\n"
               .."Use the Keybind section to change the fly toggle key",
     })
