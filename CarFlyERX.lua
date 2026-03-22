@@ -154,7 +154,7 @@ local ok, err = pcall(function()
 
     local SpeedSlider = CarFlyTab:Slider({
         Title = "Fly Speed",
-        Desc  = "Drag to adjust speed (25 – 750)",
+        Desc  = "Drag to adjust speed (25 – 3000)",
         Step  = 25,
         Value = {
             Min     = 25,
