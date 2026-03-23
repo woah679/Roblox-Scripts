@@ -131,78 +131,78 @@ local api    = getgenv()._carfly_api
 local kWarningShown = false
 
 -- ── On-screen toggle button ───────────────────────────────────────────────
-local screenGui = Instance.new("ScreenGui")
-screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
-screenGui.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+-- local screenGui = Instance.new("ScreenGui")
+--screenGui.ResetOnSpawn = false
+--screenGui.IgnoreGuiInset = true
+--screenGui.Parent = (gethui and gethui()) or game:GetService("CoreGui")
 
-local btn = Instance.new("TextButton", screenGui)
-btn.Size             = UDim2.new(0, 110, 0, 50)
-btn.Position         = UDim2.new(0.5, -55, 0.85, 0)
-btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-btn.BackgroundTransparency = 0.3
-btn.TextColor3       = Color3.fromRGB(255, 255, 255)
-btn.Text             = "✈ CarFly: OFF"
-btn.TextSize         = 16
-btn.Font             = Enum.Font.GothamSemibold
-btn.AutoButtonColor  = false
+--local btn = Instance.new("TextButton", screenGui)
+--btn.Size             = UDim2.new(0, 110, 0, 50)
+--btn.Position         = UDim2.new(0.5, -55, 0.85, 0)
+--btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+--btn.BackgroundTransparency = 0.3
+--btn.TextColor3       = Color3.fromRGB(255, 255, 255)
+--btn.Text             = "✈ CarFly: OFF"
+--btn.TextSize         = 16
+--btn.Font             = Enum.Font.GothamSemibold
+--btn.AutoButtonColor  = false
 
-local corner = Instance.new("UICorner", btn)
-corner.CornerRadius = UDim.new(0, 10)
+--local corner = Instance.new("UICorner", btn)
+--corner.CornerRadius = UDim.new(0, 10)
 
-local stroke = Instance.new("UIStroke", btn)
-stroke.Color     = Color3.fromRGB(255, 0, 0)
-stroke.Thickness = 2
+--local stroke = Instance.new("UIStroke", btn)
+--stroke.Color     = Color3.fromRGB(255, 0, 0)
+--stroke.Thickness = 2
 
-local function updateBtn(state)
-    if state then
-        btn.Text             = "✈ CarFly: ON"
-        btn.BackgroundColor3 = Color3.fromRGB(20, 80, 20)
-        stroke.Color         = Color3.fromRGB(0, 255, 80)
-    else
-        btn.Text             = "✈ CarFly: OFF"
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        stroke.Color         = Color3.fromRGB(255, 0, 0)
-    end
-end
+--local function updateBtn(state)
+--    if state then
+--        btn.Text             = "✈ CarFly: ON"
+--        btn.BackgroundColor3 = Color3.fromRGB(20, 80, 20)
+--        stroke.Color         = Color3.fromRGB(0, 255, 80)
+--    else
+--        btn.Text             = "✈ CarFly: OFF"
+--        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+--        stroke.Color         = Color3.fromRGB(255, 0, 0)
+--    end
+--end
 
 -- Draggable + tappable: detect drag by movement distance.
 -- If finger moves <10px it's a tap; if more it's a drag.
--- Using InputEnded avoids TouchTap/InputBegan conflicts.
-local dragStart, startPos, didDrag = nil, nil, false
+--- Using InputEnded avoids TouchTap/InputBegan conflicts.
+--local dragStart, startPos, didDrag = nil, nil, false
 
-btn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        dragStart = input.Position
-        startPos  = btn.Position
-        didDrag   = false
-    end
-end)
+--btn.InputBegan:Connect(function(input)
+--    if input.UserInputType == Enum.UserInputType.Touch then
+--        dragStart = input.Position
+--        startPos  = btn.Position
+--        didDrag   = false
+--    end
+--end)
 
-btn.InputChanged:Connect(function(input)
-    if dragStart and input.UserInputType == Enum.UserInputType.Touch then
-        local delta = input.Position - dragStart
-        if delta.Magnitude > 10 then
-            didDrag = true
-        end
-        if didDrag then
-            btn.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end
-end)
+-- btn.InputChanged:Connect(function(input)
+--    if dragStart and input.UserInputType == Enum.UserInputType.Touch then
+--        local delta = input.Position - dragStart
+--        if delta.Magnitude > 10 then
+--            didDrag = true
+--        end
+--        if didDrag then
+--            btn.Position = UDim2.new(
+--                startPos.X.Scale, startPos.X.Offset + delta.X,
+--                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+--            )
+--        end
+--    end
+-- end)
 
-btn.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        if not didDrag and FlyToggle then
-            FlyToggle:Set(not api.isOn())
-        end
-        dragStart = nil
-        didDrag   = false
-    end
-end)
+-- btn.InputEnded:Connect(function(input)
+--    if input.UserInputType == Enum.UserInputType.Touch then
+--        if not didDrag and FlyToggle then
+--            FlyToggle:Set(not api.isOn())
+--        end
+--        dragStart = nil
+--        didDrag   = false
+--    end
+-- end)
 
 -- ── WindUI Tab ────────────────────────────────────────────────────────────
 local CarFlyTab = Window:Tab({ Title = "Car Fly", Icon = "plane" })
@@ -287,11 +287,12 @@ for _, def in ipairs(presetDefs) do
     })
 end
 
+CarFlyTab:Section({ Title = "About" })
 CarFlyTab:Paragraph({ Title = "About",   Desc = "CarFly (Mobile) - fly any seated vehicle with the joystick." })
 CarFlyTab:Paragraph({ Title = "Warning", Desc = "Some vehicles will not face forwards." })
-CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYou. Edited by Claude and woah679." })
+CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYT. Edited by Claude and woah679." })
 
 end)
 local _w = _G.WindUI
 if _w then _w:Notify({ Title = "CarFly (Mobile) Loaded", Content = "CarFly is ready!", Duration = 3, Icon = "plane" }) end
-if not ok then warn("[CarFly Mobile ERX] " .. tostring(err)) end
+if not ok then warn("[CarFly ERX Mobile]" .. tostring(err)) end
