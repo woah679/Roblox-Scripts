@@ -230,17 +230,17 @@ local FlyToggle = CarFlyTab:Toggle({
     end,
 })
 
-CarFlyTab:Toggle({
-    Title    = "Stop on Disable",
-    Desc     = "Zeroes the car\'s velocity and rotation when CarFly is turned off",
-    Icon     = "octagon",
-    Value    = false,
-    Callback = function(state) api.setStopOnDisable(state) end,
-})
+--CarFlyTab:Toggle({
+--    Title    = "Stop on Disable",
+--    Desc     = "Zeroes the car\'s velocity and rotation when CarFly is turned off",
+--    Icon     = "octagon",
+--    Value    = false,
+--    Callback = function(state) api.setStopOnDisable(state) end,
+--})
 
 CarFlyTab:Paragraph({
     Title = "Controls",
-    Desc  = "Use the on-screen button or this toggle to enable CarFly.\nSteer with the joystick.",
+    Desc  = "Use the on-screen button or this toggle to enable CarFly.\nMove with the joystick and camera.",
 })
 
 CarFlyTab:Section({ Title = "Speed" })
