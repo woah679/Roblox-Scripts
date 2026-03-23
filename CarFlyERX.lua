@@ -11,7 +11,9 @@ getgenv()._carfly_final=true
 
 local bind=Enum.KeyCode.J
 local on=false
+local onCooldown=false
 local currentSpeed = 150
+local smoothGyro=CFrame.new()
 local kWarningShown = false
 
 local hb,gy,vl
@@ -22,30 +24,15 @@ local function clean()
 	if gy then pcall(function() gy:Destroy() gy=nil end) end
 	if vl then
 		if stopOnDisable then
+			-- Zero velocity then destroy, same frame.
+			-- BodyVelocity destruction while airborne stops momentum like the original.
 			pcall(function()
-				local col2 = getgenv()._carfly_col
-				local root = vl.Parent
-				-- Zero linear velocity via BodyVelocity before destroying it
 				vl.Velocity = Vector3.new()
-				-- Briefly lock rotation using a flat BodyGyro so A-Chassis
-				-- cannot reapply angular momentum before physics settles
-				if col2 and col2.Parent then
-					local stopGy = Instance.new("BodyGyro", col2)
-					local yaw = math.atan2(-col2.CFrame.LookVector.X, -col2.CFrame.LookVector.Z)
-					stopGy.CFrame    = CFrame.new(col2.Position) * CFrame.Angles(0, yaw, 0)
-					stopGy.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-					stopGy.P         = 9e4
-					if root then
-						root.AssemblyLinearVelocity  = Vector3.new()
-						root.AssemblyAngularVelocity = Vector3.new()
-					end
-					task.delay(0.3, function()
-						pcall(function() stopGy:Destroy() end)
-					end)
-				end
 			end)
+			pcall(function() vl:Destroy() vl=nil end)
+		else
+			pcall(function() vl:Destroy() vl=nil end)
 		end
-		pcall(function() vl:Destroy() vl=nil end)
 	end
 end
 
@@ -79,6 +66,7 @@ local function attach()
 	vl.P=9e4
 	vl.Velocity=Vector3.new()
 
+	smoothGyro=workspace.CurrentCamera.CFrame
 	local smoothVel=Vector3.new()
 
 	hb=game:GetService("RunService").Heartbeat:Connect(function()
@@ -93,17 +81,31 @@ local function attach()
 		if u:IsKeyDown(Enum.KeyCode.D) then t+=cam.RightVector*currentSpeed end
 		smoothVel=smoothVel:Lerp(t,0.15)
 		if vl then vl.Velocity=smoothVel end
-		if gy then gy.CFrame=cam end
+		-- Smooth gyro toward camera CFrame to prevent snapping
+		if gy then
+			smoothGyro = smoothGyro:Lerp(cam, 0.2)
+			gy.CFrame = smoothGyro
+		end
 	end)
 end
 
 -- Expose control API via _G so the WindUI tab (outside loadstring) can drive us
 getgenv()._carfly_api = {
 	toggle = function(state)
+		if onCooldown then return false end
 		local h=game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if state and (not h or not h.Sit) then return false end
+		onCooldown = true
+		task.delay(0.25, function() onCooldown = false end)
 		on = state
-		if on then attach() else clean() end
+		if on then
+			attach()
+		else
+			-- on is already false so the heartbeat will zero vl.Velocity this frame.
+			-- Use task.defer so clean() runs AFTER the current heartbeat fires,
+			-- matching how the original CarFly.lua stops momentum naturally.
+			task.defer(clean)
+		end
 		return true
 	end,
 	setSpeed = function(speed) currentSpeed = speed end,
@@ -188,17 +190,17 @@ getgenv()._carfly_notify = function(event)
     end
 end
 
-CarFlyTab:Toggle({
-    Title    = "Stop on Disable",
-    Desc     = "Zeroes the car's velocity when CarFly is turned off",
-    Icon     = "octagon",
-    Value    = false,
-    Callback = function(state) api.setStopOnDisable(state) end,
-})
+--CarFlyTab:Toggle({
+--    Title    = "Stop on Disable (BROKEN) ",
+--    Desc     = " (BROKEN ) Zeroes the car's velocity when CarFly is turned off",
+ --   Icon     = "octagon",
+--    Value    = false,
+ --   Callback = function(state) api.setStopOnDisable(state) end,
+--})
 
 CarFlyTab:Paragraph({
     Title = "Controls",
-    Desc  = "W / A / S / D to fly in camera direction",
+    Desc  = "W / A / S / D to fly in camera direction\n- / = to adjust speed\n[ = 75  ] = 250  K = 3000",
 })
 
 CarFlyTab:Section({ Title = "Speed" })
@@ -275,7 +277,7 @@ for _, def in ipairs(presetDefs) do
             if Enum.KeyCode[v] then
                 if presetKeybindKey[d.name] ~= Enum.KeyCode[v] then
                     presetKeybindKey[d.name] = Enum.KeyCode[v]
-                    WindUI:Notify({ Title = "Keybind", Content = d.title .. " key set to: " .. v, Duration = 4, Icon = d.icon })
+                    WindUI:Notify({ Title = "Keybind", Content = d.title .. " key set to: " .. v, Duration = 2, Icon = d.icon })
                 end
             end
         end,
@@ -318,7 +320,9 @@ CarFlyTab:Keybind({
 
 CarFlyTab:Paragraph({ Title = "About",   Desc = "CarFly - fly any seated vehicle with WASD." })
 CarFlyTab:Paragraph({ Title = "Warning", Desc = "Some vehicles will not face forwards." })
-CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYT. Edited by Claude and woah679." })
+CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYou. Edited by Claude and woah679." })
 
 end)
+local _w = _G.WindUI
+if _w then _w:Notify({ Title = "CarFly (Keyboard) Loaded", Content = "CarFly is ready!", Duration = 3, Icon = "plane" }) end
 if not ok then warn("[CarFly ERX] " .. tostring(err)) end
