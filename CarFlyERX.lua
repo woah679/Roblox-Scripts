@@ -275,7 +275,7 @@ for _, def in ipairs(presetDefs) do
             if Enum.KeyCode[v] then
                 if presetKeybindKey[d.name] ~= Enum.KeyCode[v] then
                     presetKeybindKey[d.name] = Enum.KeyCode[v]
-                    WindUI:Notify({ Title = "Keybind", Content = d.title .. " key set to: " .. v, Duration = 2, Icon = d.icon })
+                    WindUI:Notify({ Title = "Keybind", Content = d.title .. " key set to: " .. v, Duration = 4, Icon = d.icon })
                 end
             end
         end,
