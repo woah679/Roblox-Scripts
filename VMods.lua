@@ -4,10 +4,12 @@ local WindUI = _G.WindUI
 local Window = _G.Window
 local Tabs   = _G.Tabs
 
-local Players   = cloneref(game:GetService("Players"))
-local LocalPlayer = Players.LocalPlayer
-local WorkSpace = cloneref(game:GetService("Workspace"))
-local Vehicles  = WorkSpace:WaitForChild("Vehicles", 9e9)
+local Players         = cloneref(game:GetService("Players"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local RunService      = cloneref(game:GetService("RunService"))
+local LocalPlayer     = Players.LocalPlayer
+local WorkSpace       = cloneref(game:GetService("Workspace"))
+local Vehicles        = WorkSpace:WaitForChild("Vehicles", 9e9)
 
 -- ─────────────────────────────────────────────
 -- Helpers
@@ -55,8 +57,6 @@ local function StoreDefaults(vehicle)
 	end
 end
 
--- multiplierTable maps key → per-key multiplier (nil = skip)
--- Some values benefit from different scaling (e.g. BrakeForce shouldn't increase too aggressively)
 local function ApplyPreset(vehicle, mult)
 	local ok, Drive = pcall(require, vehicle:FindFirstChild("Drive Controller"))
 	if not ok or not Drive then return false, "Drive Controller not found" end
@@ -65,46 +65,35 @@ local function ApplyPreset(vehicle, mult)
 	local def = VehicleDefaults[vehicle]
 	if not def then return false, "Failed to read defaults" end
 
-	-- Horsepower — scale aggressively
 	if def.Horsepower then
 		local hp = def.Horsepower * mult
 		if hp < 2000 and mult > 1.2 then hp = def.Horsepower * mult * 1.3 end
 		rawset(Drive, "Horsepower", hp)
 	end
 
-	-- FinalDrive — reduce to spread torque across speed range
 	if def.FinalDrive then
 		rawset(Drive, "FinalDrive", def.FinalDrive / math.sqrt(mult))
 	end
 
-	-- RevAccel — how fast RPM climbs
 	if def.RevAccel    then rawset(Drive, "RevAccel",    def.RevAccel    * mult) end
-
-	-- Anti-roll bars — stiffer keeps car flat at speed
 	if def.FAntiRoll   then rawset(Drive, "FAntiRoll",   def.FAntiRoll   * mult) end
 	if def.RAntiRoll   then rawset(Drive, "RAntiRoll",   def.RAntiRoll   * mult) end
 
-	-- Suspension stiffness
 	if def.FSusStiffness then rawset(Drive, "FSusStiffness", def.FSusStiffness * mult) end
 	if def.RSusStiffness then rawset(Drive, "RSusStiffness", def.RSusStiffness * mult) end
 
-	-- Damping — scale mildly so car doesn't bounce
 	if def.FSusDamping then rawset(Drive, "FSusDamping", def.FSusDamping * math.sqrt(mult)) end
 	if def.RSusDamping then rawset(Drive, "RSusDamping", def.RSusDamping * math.sqrt(mult)) end
 
-	-- Steering decay (higher = steering centres faster at speed)
 	if def.SteerDecay  then rawset(Drive, "SteerDecay",  def.SteerDecay  * mult) end
 
-	-- Braking — scale mildly so the car can actually stop
 	if def.BrakeForce  then rawset(Drive, "BrakeForce",  def.BrakeForce  * math.sqrt(mult)) end
 	if def.PBrakeForce then rawset(Drive, "PBrakeForce", def.PBrakeForce * math.sqrt(mult)) end
 	if def.EBrakeForce then rawset(Drive, "EBrakeForce", def.EBrakeForce * math.sqrt(mult)) end
 
-	-- ABS/TCS thresholds — loosen slightly so they don't fight the extra power
 	if def.TCSThreshold then rawset(Drive, "TCSThreshold", def.TCSThreshold * mult) end
 	if def.ABSThreshold then rawset(Drive, "ABSThreshold", def.ABSThreshold * mult) end
 
-	-- Shift times — faster shifts at higher multipliers (divide so the value shrinks)
 	if def.ShiftUpTime then rawset(Drive, "ShiftUpTime", math.max(def.ShiftUpTime / mult, 0.015)) end
 	if def.ShiftDnTime then rawset(Drive, "ShiftDnTime", math.max(def.ShiftDnTime / mult, 0.015)) end
 
@@ -124,20 +113,17 @@ local function ResetVehicle(vehicle)
 	return true
 end
 
--- Try to restart the vehicle GUI so changes take effect immediately
 local function TryRestartVehicleUI()
-	local gui = LocalPlayer.PlayerGui:FindFirstChild("GameGui")
+	local gui  = LocalPlayer.PlayerGui:FindFirstChild("GameGui")
 	local vGui = gui and gui:FindFirstChild("VehicleGui")
 	local vInt = vGui and vGui:FindFirstChild("Vehicle Interface")
 	if vInt then
-		local ok = pcall(function()
+		pcall(function()
 			vInt.Drive.Enabled = false
 			task.wait()
 			vInt.Drive.Enabled = true
 		end)
-		return ok
 	end
-	return false
 end
 
 -- ─────────────────────────────────────────────
@@ -257,12 +243,11 @@ VModTab:Paragraph({
 	Desc  = "Changes which wheels receive engine power. Takes effect immediately on your current/owned vehicle.",
 })
 
-local drivetrainOptions = { "FWD", "RWD", "AWD" }
 local selectedDrivetrain = "RWD"
 
 VModTab:Dropdown({
 	Title  = "Drivetrain",
-	Values = drivetrainOptions,
+	Values = { "FWD", "RWD", "AWD" },
 	Multi  = false,
 	Value  = "RWD",
 	Callback = function(value)
@@ -295,7 +280,6 @@ VModTab:Button({
 			return
 		end
 
-		-- Store original Config if not already saved
 		if not VehicleDefaults[vehicle] then
 			StoreDefaults(vehicle)
 		end
@@ -329,7 +313,7 @@ VModTab:Slider({
 	Title = "Final Drive",
 	Desc  = "Adjust the final drive ratio (0.50 – 8.00)",
 	Value = { Min = 0.50, Max = 8.00, Default = 4 },
-	Step  = 0.1,
+	Step  = 0.25,
 	Callback = function(v)
 		finalDriveValue = tonumber(v) or 4
 	end,
@@ -360,7 +344,6 @@ VModTab:Button({
 			return
 		end
 
-		-- Store defaults if not already saved
 		if not VehicleDefaults[vehicle] then
 			StoreDefaults(vehicle)
 		end
@@ -432,6 +415,83 @@ VModTab:Button({
 	end,
 })
 
+-- ── Speed Boost ───────────────────────────────
+
+VModTab:Section({ Title = "Speed Boost" })
+
+VModTab:Paragraph({
+	Title = "Speed Boost",
+	Desc  = "Instantly pushes your vehicle forward.\n" ..
+	        "Works best at speed.\n" ..
+	        "High boost strength may cause vehicle to spin out",
+})
+
+local boostStrength   = 150
+local boostKeybind    = Enum.KeyCode.U
+local boostOnCooldown = false
+
+VModTab:Slider({
+	Title = "Boost Strength",
+	Desc  = "How much velocity is added per boost (50 – 500)",
+	Value = { Min = 50, Max = 500, Default = 150 },
+	Step  = 25,
+	Callback = function(v)
+		boostStrength = tonumber(v) or 150
+	end,
+})
+
+local function FireBoost()
+	if boostOnCooldown then return end
+
+	local vehicle = GetDrivenVehicle()
+	if not vehicle then
+		WindUI:Notify({
+			Title   = "VMods – Speed Boost",
+			Content = "You must be driving a vehicle to boost.",
+			Duration = 3,
+		})
+		return
+	end
+
+	local primary = vehicle.PrimaryPart
+	if not primary then return end
+
+	boostOnCooldown = true
+
+	-- Push the car in its current look direction
+	local forwardVec = primary.CFrame.LookVector
+	local currentVel = primary.AssemblyLinearVelocity
+	primary.AssemblyLinearVelocity = currentVel + forwardVec * boostStrength
+
+	-- Brief cooldown so you can't spam it into orbit
+	task.delay(0.5, function()
+		boostOnCooldown = false
+	end)
+end
+
+VModTab:Button({
+	Title = "Boost!",
+	Desc  = "Instantly pushes the vehicle forward.",
+	Callback = FireBoost,
+})
+
+VModTab:Keybind({
+	Title = "Boost Keybind",
+	Desc  = "Press to fire a boost while driving.",
+	Value = "M",
+	Callback = function(v)
+		boostKeybind = Enum.KeyCode[v] or Enum.KeyCode.Q
+	end,
+})
+
+-- Listen for the keybind globally
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == boostKeybind then
+		FireBoost()
+	end
+end)
+
 -- ── Custom Multiplier ──────────────────────────
 
 VModTab:Section({ Title = "Custom Multiplier" })
@@ -456,9 +516,11 @@ VModTab:Button({
 	end,
 })
 
-VModTab:Section({ Title = "Credits"})
-VModTab:Paragraph({ Title = "Credits",
-    Desc = "Made with Claude. Made and edited by woah679"})
+VModTab:Section({ Title = "Credits" })
+VModTab:Paragraph({
+	Title = "Credits",
+	Desc  = "Made with Claude. Made and edited by woah679",
+})
 
 WindUI:Notify({
 	Title   = "VMods loaded",
