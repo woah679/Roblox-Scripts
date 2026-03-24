@@ -200,7 +200,7 @@ end
 
 CarFlyTab:Paragraph({
     Title = "Controls",
-    Desc  = "W / A / S / D to fly in camera direction\n- / = to adjust speed\n[ = 75  ] = 250  K = 3000",
+    Desc  = "W / A / S / D to fly in camera direction",
 })
 
 CarFlyTab:Section({ Title = "Speed" })
@@ -221,7 +221,7 @@ end
 
 -- Speed preset data
 local presetDefs = {
-    { name = "slow",      title = "Slow (75)",      icon = "turtle", speed = 75   },
+    { name = "slow",      title = "Slow (75)",       icon = "turtle", speed = 75   },
     { name = "normal",    title = "Normal (250)",    icon = "rabbit", speed = 250  },
     { name = "fast",      title = "Fast (750)",      icon = "zap",    speed = 750  },
     { name = "ludicrous", title = "Ludicrous (3000)",icon = "rocket", speed = 3000 },
@@ -318,6 +318,7 @@ CarFlyTab:Keybind({
     end,
 })
 
+CarFlyTab:Section({ Titile = "About" })
 CarFlyTab:Paragraph({ Title = "About",   Desc = "CarFly - fly any seated vehicle with WASD." })
 CarFlyTab:Paragraph({ Title = "Warning", Desc = "Some vehicles will not face forwards." })
 CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYou. Edited by Claude and woah679." })
