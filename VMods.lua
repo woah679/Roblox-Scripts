@@ -478,9 +478,9 @@ VModTab:Button({
 VModTab:Keybind({
 	Title = "Boost Keybind",
 	Desc  = "Press to fire a boost while driving.",
-	Value = "M",
+	Value = "U",
 	Callback = function(v)
-		boostKeybind = Enum.KeyCode[v] or Enum.KeyCode.Q
+		boostKeybind = Enum.KeyCode[v] or Enum.KeyCode.U
 	end,
 })
 
