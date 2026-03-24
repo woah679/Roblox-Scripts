@@ -201,7 +201,7 @@ end
 
 VModTab:Button({
 	Title = "Preset ×1.2  (Mild Boost)",
-	Desc  = "Slightly increases HP, suspension stiffness, steering response and braking.",
+	Desc  = "Slight increase",
 	Callback = function()
 		RunPreset("×1.2", 1.2)
 	end,
@@ -209,7 +209,7 @@ VModTab:Button({
 
 VModTab:Button({
 	Title = "Preset ×2  (Large Boost)",
-	Desc  = "Doubles HP, stiffens suspension, increases braking and steering response.",
+	Desc  = "Doubles",
 	Callback = function()
 		RunPreset("×2", 2)
 	end,
@@ -458,7 +458,7 @@ VModTab:Button({
 
 VModTab:Section({ Title = "Credits"})
 VModTab:Paragraph({ Title = "Credits",
-    Desc = "Made with Claude by woah679"})
+    Desc = "Made with Claude. Made and edited by woah679"})
 
 WindUI:Notify({
 	Title   = "VMods loaded",
