@@ -321,7 +321,7 @@ CarFlyTab:Keybind({
 CarFlyTab:Section({ Titile = "About" })
 CarFlyTab:Paragraph({ Title = "About",   Desc = "CarFly - fly any seated vehicle with WASD." })
 CarFlyTab:Paragraph({ Title = "Warning", Desc = "Some vehicles will not face forwards." })
-CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYou. Edited by Claude and woah679." })
+CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYT. Edited by Claude and woah679." })
 
 end)
 local _w = _G.WindUI
