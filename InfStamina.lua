@@ -1,5 +1,4 @@
 local FillStaminaRemote = FE:WaitForChild("FillStaminaBought", 9e9)
-local Vehicles = WorkSpace:WaitForChild("Vehicles", 9e9)
 
 
 
