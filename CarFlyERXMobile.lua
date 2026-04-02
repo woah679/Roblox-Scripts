@@ -220,7 +220,7 @@ local FlyToggle = CarFlyTab:Toggle({
             WindUI:Notify({ Title = "CarFly", Content = "You must be seated in a vehicle!", Duration = 3, Icon = "alert-triangle" })
             return
         end
-        updateBtn(state)
+--        updateBtn(state)
         WindUI:Notify({
             Title   = "CarFly",
             Content = "CarFly: " .. (state and "ON" or "OFF"),
