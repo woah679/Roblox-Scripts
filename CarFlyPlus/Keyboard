@@ -1,7 +1,7 @@
 repeat task.wait() until _G.WindUI and _G.Window and _G.Functions
 local ok, err = pcall(function()
-if getgenv()._carfly_windui_tab then return end
-getgenv()._carfly_windui_tab = true
+if getgenv()._carfly_erx then return end
+getgenv()._carfly_erx = true
 
 -- Physics runs inside loadstring to bypass ERX setfenv which breaks BodyGyro
 local src = [=[
@@ -12,7 +12,7 @@ getgenv()._carfly_final=true
 local bind=Enum.KeyCode.J
 local on=false
 local onCooldown=false
-local currentSpeed = 150
+local currentSpeed = 250
 local smoothGyro=CFrame.new()
 local kWarningShown = false
 
@@ -98,6 +98,17 @@ getgenv()._carfly_api = {
 		onCooldown = true
 		task.delay(0.25, function() onCooldown = false end)
 		on = state
+		-- Toggle BorderWalls collision with CarFly state
+		pcall(function()
+			local BorderWalls = game:GetService("Workspace"):FindFirstChild("BorderWalls")
+			if BorderWalls then
+				for _, part in ipairs(BorderWalls:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = not on
+					end
+				end
+			end
+		end)
 		if on then
 			attach()
 		else
@@ -191,11 +202,11 @@ getgenv()._carfly_notify = function(event)
 end
 
 --CarFlyTab:Toggle({
---    Title    = "Stop on Disable (BROKEN) ",
---    Desc     = " (BROKEN ) Zeroes the car's velocity when CarFly is turned off",
- --   Icon     = "octagon",
+--    Title    = "Stop on Disable",
+--    Desc     = "Zeroes the car's velocity when CarFly is turned off",
+--    Icon     = "octagon",
 --    Value    = false,
- --   Callback = function(state) api.setStopOnDisable(state) end,
+--    Callback = function(state) api.setStopOnDisable(state) end,
 --})
 
 CarFlyTab:Paragraph({
@@ -209,7 +220,7 @@ local SpeedSlider = CarFlyTab:Slider({
     Title = "Fly Speed",
     Desc  = "Drag to adjust speed (25 - 3000)",
     Step  = 25,
-    Value = { Min = 25, Max = 3000, Default = 150 },
+    Value = { Min = 25, Max = 3000, Default = 250 },
     Callback = function(value) api.setSpeed(value) end,
 })
 
@@ -227,7 +238,7 @@ local presetDefs = {
     { name = "ludicrous", title = "Ludicrous (3000)",icon = "rocket", speed = 3000 },
 }
 
--- Per-preset keybind state (QoL.lua pattern: toggle stores enabled, keybind stores key)
+-- Per-preset keybind state
 local presetKeybindEnabled = {}
 local presetKeybindKey     = {}
 
@@ -318,12 +329,11 @@ CarFlyTab:Keybind({
     end,
 })
 
-CarFlyTab:Section({ Titile = "About" })
 CarFlyTab:Paragraph({ Title = "About",   Desc = "CarFly - fly any seated vehicle with WASD." })
 CarFlyTab:Paragraph({ Title = "Warning", Desc = "Some vehicles will not face forwards." })
 CarFlyTab:Paragraph({ Title = "Credits", Desc = "Original script by maven and WhoAboutYT. Edited by Claude and woah679." })
 
 end)
-local _w = _G.WindUI
-if _w then _w:Notify({ Title = "CarFly (Keyboard) Loaded", Content = "CarFly is ready!", Duration = 3, Icon = "plane" }) end
-if not ok then warn("[CarFly ERX] " .. tostring(err)) end
+local WindUI = _G.WindUI
+if WindUI then WindUI:Notify({ Title = "CarFly (Keyboard) Loaded", Content = "CarFly is ready!", Duration = 3, Icon = "plane" }) end
+if not ok then warn("CarFly ERX" .. tostring(err)) end
