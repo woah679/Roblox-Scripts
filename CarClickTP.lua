@@ -80,5 +80,5 @@ local Toggle = Tabs.Teleports:Toggle({
     end,
 })
 
-WindUI:Paragraph({ Title = "Credits", Desc = "Made with Claude. Made and edited by woah679"
+WindUI:Paragraph({ Title = "Credits", Desc = "Made with Claude. Made and edited by woah679"})
 WindUI:Notify({ Title = "Click TP Loaded", Content = "Vehicle Click TP is ready!", Duration = 3 })
