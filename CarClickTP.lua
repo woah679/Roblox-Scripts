@@ -72,11 +72,6 @@ local Toggle = Tabs.Teleports:Toggle({
         else
             if connection then connection:Disconnect() connection = nil end
         end
-        WindUI:Notify({
-            Title = "Click TP",
-            Content = "Vehicle Click TP: " .. (state and "ON" or "OFF"),
-            Duration = 2,
-        })
     end,
 })
 
