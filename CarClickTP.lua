@@ -2,6 +2,7 @@ repeat task.wait() until _G.WindUI and _G.Window and _G.Functions
 
 local WindUI = _G.WindUI
 local Window = _G.Window
+local Tabs = _G.Tabs
 local Functions = _G.Functions
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,8 +14,6 @@ local enabled = false
 local connection = nil
 local rayParams = RaycastParams.new()
 
-local Tab = Window:Tab({ Title = "Click TP", Icon = "crosshair" })
-Tab:Section({ Title = "Vehicle Click Teleport" })
 
 local function getGroundPosition()
     local mouse = LocalPlayer:GetMouse()
@@ -47,7 +46,7 @@ local function onInputBegan(input, processed)
     end
 
     if not humanoid or not humanoid.SeatPart then
-        WindUI:Notify({ Title = "Click TP", Content = "You must be driving your vehicle!", Duration = 2 })
+        WindUI:Notify({ Title = "Click TP", Content = "You must be driving a vehicle!", Duration = 2 })
         return
     end
 
@@ -62,7 +61,7 @@ local function onInputBegan(input, processed)
     vehicle:PivotTo(targetCF)
 end
 
-local Toggle = Tab:Toggle({
+local Toggle = Tabs.Teleports:Toggle({
     Title = "Vehicle Click Teleport",
     Desc = "Click anywhere to teleport your driven vehicle there",
     Value = false,
