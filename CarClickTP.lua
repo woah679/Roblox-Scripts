@@ -61,6 +61,8 @@ local function onInputBegan(input, processed)
     vehicle:PivotTo(targetCF)
 end
 
+Tabs.Teleports:Section({ Title = "Car Click TP" })
+
 local Toggle = Tabs.Teleports:Toggle({
     Title = "Vehicle Click Teleport",
     Desc = "Click anywhere to teleport your driven vehicle there",
@@ -75,5 +77,9 @@ local Toggle = Tabs.Teleports:Toggle({
     end,
 })
 
-WindUI:Paragraph({ Title = "Credits", Desc = "Made with Claude. Made and edited by woah679"})
+Tabs.Teleports:Paragraph({
+	Title = "Credits",
+	Desc  = "Car Click TP is made with Claude. Made and edited by woah679",
+})
+
 WindUI:Notify({ Title = "Click TP Loaded", Content = "Vehicle Click TP is ready!", Duration = 3 })
