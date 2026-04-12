@@ -214,7 +214,7 @@ local function ApplyPreset(vehicle, mult)
 	else
 		if def.Horsepower then
 			local hp = def.Horsepower * mult
-			if hp < 2000 and mult > 1.2 end
+			if hp < 2000 and mult > 1.2 then end
 			rawset(Drive, "Horsepower", hp)
 		end
 	end
@@ -259,6 +259,24 @@ end)
 
 local VModTab = Window:Tab({ Title = "Vehicle Mods+", Icon = "car" })
 
+VModTab:Section({ Title = Reset
+
+VModTab:Button({
+	Title = "Reset to Default",
+	Desc  = "Restores all values.",
+	Callback = function()
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Reset", "No vehicle found.") return end
+		local ok, err = ResetVehicle(vehicle)
+		if ok then
+			TryRestartVehicleUI()
+			WindUI:Notify({ Title = "Vehicle Mods+ - Reset", Content = "Restored defaults for: " .. vehicle.Name, Duration = 4 })
+		else
+			NotifyError("Reset", err)
+		end
+	end,
+})
+
 -- ══════════════════════════════════════════════
 -- QUICK PRESETS
 -- ══════════════════════════════════════════════
@@ -266,10 +284,9 @@ local VModTab = Window:Tab({ Title = "Vehicle Mods+", Icon = "car" })
 VModTab:Section({ Title = "Quick Presets" })
 
 VModTab:Paragraph({
-	Title = "What does this do?",
+	Title = "Quick Presets",
 	Desc  = "Scales the vehicle's drive physics by a multiplier.\n" ..
-	        "Electric cars will have their torque scaled instead of horsepower.\n" ..
-	        "'Reset' restores all original values.",
+	        "'Reset to Defaults' restores all original values.",
 })
 
 local function RunPreset(mult)
@@ -302,21 +319,6 @@ VModTab:Button({
 	Callback = function() RunPreset(2) end,
 })
 
-VModTab:Button({
-	Title = "Reset to Defaults",
-	Desc  = "Restores all original drive values.",
-	Callback = function()
-		local vehicle = GetVehicle()
-		if not vehicle then NotifyError("Reset", "No vehicle found.") return end
-		local ok, err = ResetVehicle(vehicle)
-		if ok then
-			TryRestartVehicleUI()
-			WindUI:Notify({ Title = "Vehicle Mods+ - Reset", Content = "Restored defaults for: " .. vehicle.Name, Duration = 4 })
-		else
-			NotifyError("Reset", err)
-		end
-	end,
-})
 
 -- ══════════════════════════════════════════════
 -- DRIVETRAIN
@@ -359,15 +361,15 @@ VModTab:Section({ Title = "Final Drive" })
 
 VModTab:Paragraph({
 	Title = "Final Drive",
-	Desc  = "Lower = higher top speed, less acceleration.\nHigher = more acceleration, lower top speed.",
+	Desc  = "Lower = higher top speed, less acceleration.\nHigher = more acceleration, lower top speed.\nMost vehicles around 4, EVs are higher",
 })
 
 local finalDriveValue = 4
 
 VModTab:Slider({
 	Title = "Final Drive",
-	Desc  = "Ratio (0.50 – 8.00)",
-	Value = { Min = 0.50, Max = 8.00, Default = 4 },
+	Desc  = "Ratio (0.50 – 15.00)",
+	Value = { Min = 0.50, Max = 15.00, Default = 4 },
 	Step  = 0.25,
 	Callback = function(v) finalDriveValue = tonumber(v) or 4 end,
 })
@@ -404,7 +406,7 @@ local horsepowerValue = 300
 
 VModTab:Slider({
 	Title = "Power Value",
-	Desc  = "HP for ICE  /  Torque (Nm) for Electric (50 – 5000)",
+	Desc  = "HP for ICE  /  Torque  for Electric (50 – 5000)",
 	Value = { Min = 50, Max = 5000, Default = 300 },
 	Step  = 25,
 	Callback = function(v) horsepowerValue = tonumber(v) or 300 end,
@@ -444,15 +446,14 @@ VModTab:Button({
 VModTab:Section({ Title = "Steering" })
 
 VModTab:Paragraph({
-	Title = "Tighter Steering",
-	Desc  = "Reduces SteerRatio and LockToLock for more direct, responsive steering.\n" ..
-	        "Also widens SteerInner/SteerOuter for a tighter turning radius.\n" ..
-	        "Use Reset to Defaults to undo.",
+	Title = "Sharper Steering",
+	Desc  = "Reduces SteerRatio and increases SteerSpeed & Ackerman for sharper steering.\n" ..
+	        "Use 'Reset to Defaults' to undo.",
 })
 
 VModTab:Button({
-	Title = "Tighter Steering",
-	Desc  = "Changes SteerRatio and Ackerman for sharper turning.",
+	Title = "Apply",
+	Desc  = "Applies sharper steering.",
 	Callback = function()
 		local vehicle = GetVehicle()
 		if not vehicle then NotifyError("Steering", "No vehicle found!") return end
@@ -464,7 +465,7 @@ VModTab:Button({
       	local oldAcker = rawget(Drive, "Ackerman")
 		local oldSpeed = rawget(Drive, "SteerSpeed")
 
-		local newRatio = 12
+		local newRatio = 13
     	local newAcker = 1.1
 		local newSpeed = 0.05
 
@@ -524,7 +525,7 @@ end
 
 VModTab:Button({
 	Title = "Boost!",
-	Desc  = "Instantly pushes the vehicle forward.",
+	Desc  = "Instantly pushes your vehicle forward.",
 	Callback = FireBoost,
 })
 
