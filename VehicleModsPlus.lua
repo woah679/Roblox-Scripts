@@ -6,6 +6,7 @@ local Tabs    = _G.Tabs
 
 local Players          = cloneref(game:GetService("Players"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
+local HttpService      = cloneref(game:GetService("HttpService"))
 local LocalPlayer      = Players.LocalPlayer
 local WorkSpace        = cloneref(game:GetService("Workspace"))
 local Vehicles         = WorkSpace:WaitForChild("Vehicles", 9e9)
@@ -83,95 +84,138 @@ local function NotifyError(title, msg)
 end
 
 -- ─────────────────────────────────────────────
--- Defaults store
+-- File system helpers
+-- ─────────────────────────────────────────────
+
+local ROOT_FOLDER   = "ERX"
+local CONFIG_FOLDER = ROOT_FOLDER .. "/config/VehicleModsPlus"
+
+local function EnsureFolder(path)
+	if not isfolder(path) then
+		makefolder(path)
+	end
+end
+
+local function VehicleFolder(vehicleName)
+	-- Sanitise vehicle name for use as a folder name
+	local safe = vehicleName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_")
+	return CONFIG_FOLDER .. "/" .. safe, safe
+end
+
+local function ConfigPath(vehicleName, configName)
+	local folder = VehicleFolder(vehicleName)
+	local safeName = configName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_")
+	return folder .. "/" .. safeName .. ".json"
+end
+
+local function AutoloadPath(vehicleName)
+	local folder = VehicleFolder(vehicleName)
+	return folder .. "/__autoload.txt"
+end
+
+-- Returns list of config names (without .json) for a given vehicle
+local function ListConfigs(vehicleName)
+	local folder = VehicleFolder(vehicleName)
+	if not isfolder(folder) then return {} end
+
+	local configs = {}
+	-- ERX exposes listfiles() as part of the exploit environment
+	local ok, files = pcall(listfiles, folder)
+	if not ok then return {} end
+
+	for _, path in ipairs(files) do
+		local name = path:match("([^/\\]+)%.json$")
+		if name then
+			table.insert(configs, name)
+		end
+	end
+	return configs
+end
+
+local function GetAutoload(vehicleName)
+	local path = AutoloadPath(vehicleName)
+	if isfile(path) then
+		local content = readfile(path)
+		return content ~= "" and content or nil
+	end
+	return nil
+end
+
+local function SetAutoload(vehicleName, configName)
+	EnsureFolder(ROOT_FOLDER)
+	EnsureFolder(CONFIG_FOLDER)
+	local folder = VehicleFolder(vehicleName)
+	EnsureFolder(folder)
+	writefile(AutoloadPath(vehicleName), configName or "")
+end
+
+-- ─────────────────────────────────────────────
+-- Defaults / drive key lists
 -- ─────────────────────────────────────────────
 
 local VehicleDefaults = {}
 
 local DEFAULT_KEYS = {
-	-- Engine
 	"Horsepower", "IdleRPM", "PeakRPM", "Redline", "EqPoint", "PeakSharpness", "CurveMult",
 	"RevAccel", "RevDecay", "RevBounce", "IdleThrottle", "Flywheel", "InclineComp",
 	"ThrotAccel", "ThrotDecel", "BrakeAccel", "BrakeDecel",
-	-- Electric
 	"Electric", "E_Horsepower", "E_Torque", "E_Redline", "E_Trans1", "E_Trans2",
 	"EH_FrontMult", "EH_EndMult", "EH_EndPercent", "ET_EndMult", "ET_EndPercent",
-	-- Turbo/Super
 	"Turbochargers", "T_Boost", "T_Efficiency", "T_Size",
 	"Superchargers", "S_Boost", "S_Efficiency", "S_Sensitivity",
-	-- Transmission
 	"FinalDrive", "FDMult", "ShiftUpTime", "ShiftDnTime",
 	"AutoUpThresh", "AutoDownThresh", "ShiftThrot",
 	"ClutchEngage", "SpeedEngage", "KickMult", "KickSpeedThreshold", "KickRPMThreshold", "ClutchRPMMult",
 	"RPMEngage", "NeutralRevRPM",
-	-- Drivetrain
 	"Config", "TorqueVector",
 	"FDiffSlipThres", "FDiffLockThres", "RDiffSlipThres", "RDiffLockThres", "CDiffSlipThres", "CDiffLockThres",
 	"FDiffPower", "FDiffCoast", "FDiffPreload", "RDiffPower", "RDiffCoast", "RDiffPreload",
-	-- Brakes
 	"BrakeForce", "BrakeBias", "PBrakeForce", "PBrakeBias", "EBrakeForce",
 	"ABSThreshold", "TCSThreshold", "TCSGradient", "TCSLimit",
-	-- Suspension
 	"FSusDamping", "FSusStiffness", "FAntiRoll", "FSusLength",
 	"FPreCompress", "FExtensionLim", "FCompressLim", "FSusAngle", "FWsBoneLen", "FWsBoneAngle",
 	"RSusDamping", "RSusStiffness", "RAntiRoll", "RSusLength",
 	"RPreCompress", "RExtensionLim", "RCompressLim", "RSusAngle", "RWsBoneLen", "RWsBoneAngle",
 	"FGyroDamp", "RGyroDamp",
-	-- Steering
 	"SteerRatio", "LockToLock", "Ackerman", "SteerInner", "SteerOuter",
 	"SteerSpeed", "ReturnSpeed", "SteerDecay", "MinSteer", "MSteerExp",
 	"SteerD", "SteerMaxTorque", "SteerP",
 	"RSteerOuter", "RSteerInner", "RSteerSpeed", "RSteerDecay", "RSteerD", "RSteerMaxTorque", "RSteerP",
-	-- Weight/Wheels
 	"Weight", "WeightDist", "CGHeight", "WeightScaling",
 	"FWheelDensity", "RWheelDensity", "AxleSize", "AxleDensity",
-	-- Alignment
 	"FCamber", "RCamber", "FCaster", "RCaster", "FToe", "RToe",
-	-- Fuel
 	"MaxFuel",
 }
 
--- All numeric keys exposed in the custom value editor
 local ALL_VALUE_KEYS = {
-	-- Engine
 	"Horsepower", "IdleRPM", "PeakRPM", "Redline", "EqPoint", "PeakSharpness", "CurveMult",
 	"RevAccel", "RevDecay", "RevBounce", "IdleThrottle", "Flywheel", "InclineComp",
 	"ThrotAccel", "ThrotDecel", "BrakeAccel", "BrakeDecel",
-	-- Electric
 	"E_Horsepower", "E_Torque", "E_Redline", "E_Trans1", "E_Trans2",
 	"EH_FrontMult", "EH_EndMult", "EH_EndPercent", "ET_EndMult", "ET_EndPercent",
-	-- Turbo/Super
-	"Turbochargers", "T_Boost", "T_Efficiency", "T_Size",
-	"Superchargers", "S_Boost", "S_Efficiency", "S_Sensitivity",
-	-- Transmission
+	"T_Boost", "T_Efficiency", "T_Size",
+	"S_Boost", "S_Efficiency", "S_Sensitivity",
 	"FinalDrive", "FDMult", "ShiftUpTime", "ShiftDnTime",
 	"AutoUpThresh", "AutoDownThresh", "ShiftThrot",
 	"ClutchEngage", "SpeedEngage", "KickMult", "KickSpeedThreshold", "KickRPMThreshold", "ClutchRPMMult",
 	"RPMEngage", "NeutralRevRPM",
-	-- Drivetrain
 	"TorqueVector",
 	"FDiffSlipThres", "FDiffLockThres", "RDiffSlipThres", "RDiffLockThres", "CDiffSlipThres", "CDiffLockThres",
 	"FDiffPower", "FDiffCoast", "FDiffPreload", "RDiffPower", "RDiffCoast", "RDiffPreload",
-	-- Brakes
 	"BrakeForce", "BrakeBias", "PBrakeForce", "PBrakeBias", "EBrakeForce",
 	"ABSThreshold", "TCSThreshold", "TCSGradient", "TCSLimit",
-	-- Suspension
 	"FSusDamping", "FSusStiffness", "FAntiRoll", "FSusLength",
 	"FPreCompress", "FExtensionLim", "FCompressLim", "FSusAngle", "FWsBoneLen", "FWsBoneAngle",
 	"RSusDamping", "RSusStiffness", "RAntiRoll", "RSusLength",
 	"RPreCompress", "RExtensionLim", "RCompressLim", "RSusAngle", "RWsBoneLen", "RWsBoneAngle",
 	"FGyroDamp", "RGyroDamp",
-	-- Steering
 	"SteerRatio", "LockToLock", "Ackerman", "SteerInner", "SteerOuter",
 	"SteerSpeed", "ReturnSpeed", "SteerDecay", "MinSteer", "MSteerExp",
 	"SteerD", "SteerMaxTorque", "SteerP",
 	"RSteerOuter", "RSteerInner", "RSteerSpeed", "RSteerDecay", "RSteerD", "RSteerMaxTorque", "RSteerP",
-	-- Weight/Wheels
 	"Weight", "WeightDist", "CGHeight", "WeightScaling",
 	"FWheelDensity", "RWheelDensity", "AxleSize", "AxleDensity",
-	-- Alignment
 	"FCamber", "RCamber", "FCaster", "RCaster", "FToe", "RToe",
-	-- Fuel
 	"MaxFuel",
 }
 
@@ -197,6 +241,56 @@ local function ResetVehicle(vehicle)
 end
 
 -- ─────────────────────────────────────────────
+-- Config save / load
+-- ─────────────────────────────────────────────
+
+-- Snapshot every key from the Drive Controller into a table
+local function SnapshotDrive(Drive)
+	local snap = {}
+	for _, key in ipairs(DEFAULT_KEYS) do
+		local v = rawget(Drive, key)
+		-- Only serialise primitives (number, string, boolean)
+		local t = type(v)
+		if t == "number" or t == "string" or t == "boolean" then
+			snap[key] = v
+		end
+	end
+	return snap
+end
+
+-- Write snapshot to ERX_ERLC/VehicleModsPlus/<vehicle>/<name>.json
+local function SaveConfig(vehicleName, configName, Drive)
+	EnsureFolder(ROOT_FOLDER)
+	EnsureFolder(CONFIG_FOLDER)
+	local folder = VehicleFolder(vehicleName)
+	EnsureFolder(folder)
+
+	local snap = SnapshotDrive(Drive)
+	local path = ConfigPath(vehicleName, configName)
+	local ok, err = pcall(writefile, path, HttpService:JSONEncode(snap))
+	return ok, err
+end
+
+-- Read a config and rawset all values back onto the Drive
+local function LoadConfig(vehicleName, configName, Drive)
+	local path = ConfigPath(vehicleName, configName)
+	if not isfile(path) then
+		return false, "Config file not found: " .. path
+	end
+
+	local raw = readfile(path)
+	local ok, data = pcall(HttpService.JSONDecode, HttpService, raw)
+	if not ok or type(data) ~= "table" then
+		return false, "Failed to parse config JSON"
+	end
+
+	for key, value in pairs(data) do
+		rawset(Drive, key, value)
+	end
+	return true
+end
+
+-- ─────────────────────────────────────────────
 -- Preset logic
 -- ─────────────────────────────────────────────
 
@@ -208,13 +302,13 @@ local function ApplyPreset(vehicle, mult)
 	local def = VehicleDefaults[vehicle]
 	if not def then return false, "Failed to read defaults" end
 
-	-- Set values
 	if IsElectric(Drive) then
-		if def.E_Torque  then rawset(Drive, "E_Torque", def.E_Torque * mult) end
+		if def.E_Torque  then rawset(Drive, "E_Torque",  def.E_Torque  * mult) end
+		if def.E_Horsepower then rawset(Drive, "E_Horsepower", def.E_Horsepower * mult) end
 	else
 		if def.Horsepower then
 			local hp = def.Horsepower * mult
-			if hp < 2000 and mult > 1.2 then end
+			if hp < 2000 and mult > 1.2 then hp = hp * 1.3 end
 			rawset(Drive, "Horsepower", hp)
 		end
 	end
@@ -228,7 +322,6 @@ local function ApplyPreset(vehicle, mult)
 	if def.FSusDamping   then rawset(Drive, "FSusDamping",   def.FSusDamping   * math.sqrt(mult)) end
 	if def.RSusDamping   then rawset(Drive, "RSusDamping",   def.RSusDamping   * math.sqrt(mult)) end
 	if def.SteerDecay    then rawset(Drive, "SteerDecay",    def.SteerDecay    * mult) end
-	if def.SteerSpeed    then rawset(Drive, "SteerSpeed",    0.05) end
 	if def.BrakeForce    then rawset(Drive, "BrakeForce",    def.BrakeForce    * math.sqrt(mult)) end
 	if def.PBrakeForce   then rawset(Drive, "PBrakeForce",   def.PBrakeForce   * math.sqrt(mult)) end
 	if def.EBrakeForce   then rawset(Drive, "EBrakeForce",   def.EBrakeForce   * math.sqrt(mult)) end
@@ -254,16 +347,26 @@ Vehicles.ChildAdded:Connect(function(v)
 end)
 
 -- ─────────────────────────────────────────────
--- UI Tab
+-- Ensure base folders exist on load
+-- ─────────────────────────────────────────────
+EnsureFolder(ROOT_FOLDER)
+EnsureFolder(CONFIG_FOLDER)
+
+-- ─────────────────────────────────────────────
+-- UI
 -- ─────────────────────────────────────────────
 
 local VModTab = Window:Tab({ Title = "Vehicle Mods+", Icon = "car" })
 
-VModTab:Section({ Title = Reset })
+-- ══════════════════════════════════════════════
+-- RESET
+-- ══════════════════════════════════════════════
+
+VModTab:Section({ Title = "General" })
 
 VModTab:Button({
 	Title = "Reset to Default",
-	Desc  = "Restores all values.",
+	Desc  = "Restores all original drive values for your current vehicle.",
 	Callback = function()
 		local vehicle = GetVehicle()
 		if not vehicle then NotifyError("Reset", "No vehicle found.") return end
@@ -286,7 +389,8 @@ VModTab:Section({ Title = "Quick Presets" })
 VModTab:Paragraph({
 	Title = "Quick Presets",
 	Desc  = "Scales the vehicle's drive physics by a multiplier.\n" ..
-	        "'Reset to Defaults' restores all original values.",
+	        "Electric cars have their torque scaled instead of HP.\n" ..
+	        "'Reset to Default' restores all original values.",
 })
 
 local function RunPreset(mult)
@@ -310,15 +414,14 @@ local function RunPreset(mult)
 end
 
 VModTab:Button({
-	Title = "Preset ×1.2  (Mild Boost)",
+	Title    = "Preset ×1.2  (Mild Boost)",
 	Callback = function() RunPreset(1.2) end,
 })
 
 VModTab:Button({
-	Title = "Preset ×2  (Large Boost)",
+	Title    = "Preset ×2  (Large Boost)",
 	Callback = function() RunPreset(2) end,
 })
-
 
 -- ══════════════════════════════════════════════
 -- DRIVETRAIN
@@ -361,16 +464,16 @@ VModTab:Section({ Title = "Final Drive" })
 
 VModTab:Paragraph({
 	Title = "Final Drive",
-	Desc  = "Lower = higher top speed, less acceleration.\nHigher = more acceleration, lower top speed.\nMost vehicles around 4, EVs are higher",
+	Desc  = "Lower = higher top speed, less acceleration.\nHigher = more acceleration, lower top speed.\nMost vehicles around 4, EVs are higher.",
 })
 
 local finalDriveValue = 4
 
 VModTab:Slider({
-	Title = "Final Drive",
-	Desc  = "Ratio (0.50 – 15.00)",
-	Value = { Min = 0.50, Max = 15.00, Default = 4 },
-	Step  = 0.25,
+	Title    = "Final Drive",
+	Desc     = "Ratio (0.50 – 15.00)",
+	Value    = { Min = 0.50, Max = 15.00, Default = 4 },
+	Step     = 0.25,
 	Callback = function(v) finalDriveValue = tonumber(v) or 4 end,
 })
 
@@ -391,7 +494,7 @@ VModTab:Button({
 })
 
 -- ══════════════════════════════════════════════
--- POWER (HP / ELECTRIC TORQUE)
+-- POWER
 -- ══════════════════════════════════════════════
 
 VModTab:Section({ Title = "Power" })
@@ -399,16 +502,17 @@ VModTab:Section({ Title = "Power" })
 VModTab:Paragraph({
 	Title = "Power",
 	Desc  = "Sets Horsepower for ICE vehicles.\n" ..
-	        "Sets E_Torque for electric vehicles.",
+	        "Sets E_Torque for electric vehicles.\n" ..
+	        "Detected automatically.",
 })
 
 local horsepowerValue = 300
 
 VModTab:Slider({
-	Title = "Power Value",
-	Desc  = "HP for ICE  /  Torque  for Electric (50 – 5000)",
-	Value = { Min = 50, Max = 5000, Default = 300 },
-	Step  = 25,
+	Title    = "Power Value",
+	Desc     = "HP for ICE  /  Torque for Electric (50 – 5000)",
+	Value    = { Min = 50, Max = 5000, Default = 300 },
+	Step     = 25,
 	Callback = function(v) horsepowerValue = tonumber(v) or 300 end,
 })
 
@@ -425,10 +529,10 @@ VModTab:Button({
 
 		if IsElectric(Drive) then
 			local oldT = rawget(Drive, "E_Torque")
-			rawset(Drive, "E_Torque",     horsepowerValue)
+			rawset(Drive, "E_Torque", horsepowerValue)
 			WindUI:Notify({
-				Title   = "VMods – Power (Electric)",
-				Content = "E_Torque: "     .. Fmt(oldT) .. " → " .. Fmt(horsepowerValue),
+				Title   = "Vehicle Mods+ – Power (Electric)",
+				Content = "E_Torque: " .. Fmt(oldT) .. " → " .. Fmt(horsepowerValue),
 				Duration = 5,
 			})
 		else
@@ -447,13 +551,12 @@ VModTab:Section({ Title = "Steering" })
 
 VModTab:Paragraph({
 	Title = "Sharper Steering",
-	Desc  = "Reduces SteerRatio and increases SteerSpeed & Ackerman for sharper steering.\n" ..
-	        "Use 'Reset to Defaults' to undo.",
+	Desc  = "Reduces SteerRatio and increases SteerSpeed & Ackerman.\n" ..
+	        "Use 'Reset to Default' to undo.",
 })
 
 VModTab:Button({
-	Title = "Apply",
-	Desc  = "Applies sharper steering.",
+	Title = "Apply Sharper Steering",
 	Callback = function()
 		local vehicle = GetVehicle()
 		if not vehicle then NotifyError("Steering", "No vehicle found!") return end
@@ -462,24 +565,22 @@ VModTab:Button({
 		if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
 
 		local oldRatio = rawget(Drive, "SteerRatio")
-      	local oldAcker = rawget(Drive, "Ackerman")
+		local oldAcker = rawget(Drive, "Ackerman")
 		local oldSpeed = rawget(Drive, "SteerSpeed")
 
-		local newRatio = 13
-    	local newAcker = 1.1
-		local newSpeed = 0.05
+		local newRatio, newAcker, newSpeed = 13, 1.1, 0.05
 
-		if newRatio then rawset(Drive, "SteerRatio", newRatio)  end
-		if newAcker then rawset(Drive, "Ackerman", newAcker) end
-		if newAcker then rawset(Drive, "SteerSpeed", newSpeed) end
-			
+		rawset(Drive, "SteerRatio",  newRatio)
+		rawset(Drive, "Ackerman",    newAcker)
+		rawset(Drive, "SteerSpeed",  newSpeed)
+
 		TryRestartVehicleUI()
 
 		WindUI:Notify({
-			Title   = "VMods – Tighter Steering",
+			Title   = "Vehicle Mods+ – Sharper Steering",
 			Content = "SteerRatio: "  .. Fmt(oldRatio) .. " → " .. Fmt(newRatio)  ..
-			          "\nAckerman: " .. Fmt(oldAcker) .. " → " .. Fmt(newAcker)  ..
-			          "\nSteerSpeed: " .. Fmt(oldSpeed) .. " → " .. Fmt(newSpeed),
+			          "\nAckerman: "  .. Fmt(oldAcker)  .. " → " .. Fmt(newAcker)  ..
+			          "\nSteerSpeed: " .. Fmt(oldSpeed)  .. " → " .. Fmt(newSpeed),
 			Duration = 5,
 		})
 	end,
@@ -501,10 +602,10 @@ local boostKeybind    = Enum.KeyCode.U
 local boostOnCooldown = false
 
 VModTab:Slider({
-	Title = "Boost Strength",
-	Desc  = "Velocity added per boost. Over 400 is dangerous. (50 – 1000)",
-	Value = { Min = 50, Max = 1000, Default = 150 },
-	Step  = 25,
+	Title    = "Boost Strength",
+	Desc     = "Velocity added per boost. Over 400 is dangerous. (50 – 1000)",
+	Value    = { Min = 50, Max = 1000, Default = 150 },
+	Step     = 25,
 	Callback = function(v) boostStrength = tonumber(v) or 150 end,
 })
 
@@ -512,7 +613,7 @@ local function FireBoost()
 	if boostOnCooldown then return end
 	local vehicle = GetDrivenVehicle()
 	if not vehicle then
-		WindUI:Notify({ Title = "VMods – Boost", Content = "You must be driving a vehicle.", Duration = 3 })
+		WindUI:Notify({ Title = "Vehicle Mods+ – Boost", Content = "You must be driving a vehicle.", Duration = 3 })
 		return
 	end
 	local primary = vehicle.PrimaryPart
@@ -524,15 +625,15 @@ local function FireBoost()
 end
 
 VModTab:Button({
-	Title = "Boost!",
-	Desc  = "Instantly pushes your vehicle forward.",
+	Title    = "Boost!",
+	Desc     = "Instantly pushes your vehicle forward.",
 	Callback = FireBoost,
 })
 
 VModTab:Keybind({
-	Title = "Boost Keybind",
-	Desc  = "Press while driving to fire a boost.",
-	Value = "U",
+	Title    = "Boost Keybind",
+	Desc     = "Press while driving to fire a boost.",
+	Value    = "U",
 	Callback = function(v)
 		boostKeybind = Enum.KeyCode[v] or Enum.KeyCode.U
 	end,
@@ -551,7 +652,7 @@ VModTab:Section({ Title = "Custom Value Editor" })
 
 VModTab:Paragraph({
 	Title = "Custom Value Editor",
-	Desc  = "Select any drive value, read it or apply a new value."
+	Desc  = "Select any drive value, read it or set it to a new number.",
 })
 
 local selectedKey    = ALL_VALUE_KEYS[1]
@@ -567,7 +668,7 @@ VModTab:Dropdown({
 
 VModTab:Button({
 	Title = "Read Current Value",
-	Desc  = "Shows the selected key's live value in a notification.",
+	Desc  = "Shows the live value of the selected key.",
 	Callback = function()
 		local vehicle = GetVehicle()
 		if not vehicle then NotifyError("Read Value", "No vehicle found!") return end
@@ -576,8 +677,8 @@ VModTab:Button({
 
 		local current = rawget(Drive, selectedKey)
 		WindUI:Notify({
-			Title   = "VMods – " .. selectedKey,
-			Content = "Current value:  " .. Fmt(current),
+			Title   = "VehicleMods+ – " .. selectedKey,
+			Content = "Current value: " .. Fmt(current),
 			Duration = 6,
 		})
 	end,
@@ -595,7 +696,7 @@ VModTab:Input({
 
 VModTab:Button({
 	Title = "Apply Value",
-	Desc  = "Sets the selected key to the value you typed.",
+	Desc  = "Sets the selected key to the typed value.",
 	Callback = function()
 		local newVal = tonumber(customRawInput)
 		if not newVal then
@@ -625,17 +726,300 @@ VModTab:Section({ Title = "Custom Multiplier" })
 local customMult = 1.5
 
 VModTab:Slider({
-	Title = "Multiplier",
-	Desc  = "Custom multiplier to apply to all preset values.",
-	Value = { Min = 1, Max = 10, Default = 1.5 },
-	Step  = 0.25,
+	Title    = "Multiplier",
+	Desc     = "Custom multiplier to apply to all preset values.",
+	Value    = { Min = 1, Max = 10, Default = 1.5 },
+	Step     = 0.25,
 	Callback = function(v) customMult = tonumber(v) or 1.5 end,
 })
 
 VModTab:Button({
-	Title = "Apply Custom Multiplier",
+	Title    = "Apply Custom Multiplier",
 	Callback = function() RunPreset(customMult) end,
 })
+
+-- ══════════════════════════════════════════════
+-- CONFIG SYSTEM
+-- ══════════════════════════════════════════════
+
+VModTab:Section({ Title = "Config System" })
+
+VModTab:Paragraph({
+	Title = "Config System",
+	Desc  = "Save and load drive configurations per vehicle.\n" ..
+	        "Configs are stored at:\n" ..
+	        "ERX_ERLC/VehicleModsPlus/<VehicleName>/<ConfigName>.json\n\n" ..
+	        "You can set one config to auto-load whenever you spawn that vehicle.",
+})
+
+-- Tracks the currently selected config name in the load dropdown
+local selectedLoadConfig = nil
+
+-- Holds a reference to the load dropdown so we can refresh it
+local ConfigLoadDropdown = nil
+
+-- Refresh the load dropdown for the current vehicle
+local function RefreshConfigDropdown()
+	if not ConfigLoadDropdown then return end
+	local vehicle = GetVehicle()
+	if not vehicle then return end
+
+	local configs = ListConfigs(vehicle.Name)
+	if #configs == 0 then
+		configs = { "(none)" }
+	end
+
+	ConfigLoadDropdown:Refresh(configs, true)
+	selectedLoadConfig = configs[1] ~= "(none)" and configs[1] or nil
+end
+
+-- ── Save config ───────────────────────────────
+
+local saveConfigNameInput = ""
+
+VModTab:Input({
+	Title       = "Config Name",
+	Desc        = "Name for this config (letters, numbers, dashes, spaces).",
+	Value       = "",
+	Placeholder = "e.g. MaxSpeed",
+	Numeric     = false,
+	Finished    = false,
+	Callback    = function(v) saveConfigNameInput = v end,
+})
+
+VModTab:Button({
+	Title = "Save Config",
+	Desc  = "Saves the vehicle's current drive values under the typed name.",
+	Callback = function()
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Save Config", "No vehicle found!") return end
+
+		local name = saveConfigNameInput:match("^%s*(.-)%s*$") -- trim
+		if name == "" then
+			NotifyError("Save Config", "Please type a config name first.")
+			return
+		end
+
+		local ok, Drive = GetDrive(vehicle)
+		if not ok then NotifyError("Save Config", "Could not read Drive Controller.") return end
+
+		local saved, err = SaveConfig(vehicle.Name, name, Drive)
+		if saved then
+			WindUI:Notify({
+				Title   = "Vehicle Mods+ – Config Saved",
+				Content = "[" .. vehicle.Name .. "] \"" .. name .. "\" saved.",
+				Duration = 5,
+			})
+			RefreshConfigDropdown()
+		else
+			NotifyError("Save Config", tostring(err))
+		end
+	end,
+})
+
+-- ── Load config ───────────────────────────────
+
+VModTab:Paragraph({
+	Title = "Load Config",
+	Desc  = "Select a saved config from the dropdown, then press Load.\n" ..
+	        "Press Refresh if the list looks outdated.",
+})
+
+ConfigLoadDropdown = VModTab:Dropdown({
+	Title    = "Saved Configs",
+	Values   = { "(none)" },
+	Multi    = false,
+	Value    = "(none)",
+	Callback = function(v)
+		selectedLoadConfig = (v ~= "(none)") and v or nil
+	end,
+})
+
+VModTab:Button({
+	Title = "Refresh Config List",
+	Desc  = "Reloads the config list for your current vehicle.",
+	Callback = function()
+		RefreshConfigDropdown()
+		WindUI:Notify({
+			Title   = "Vehicle Mods+ – Config List",
+			Content = "Config list refreshed.",
+			Duration = 3,
+		})
+	end,
+})
+
+VModTab:Button({
+	Title = "Load Config",
+	Desc  = "Applies the selected config to your vehicle.",
+	Callback = function()
+		if not selectedLoadConfig then
+			NotifyError("Load Config", "No config selected. Refresh the list or save one first.")
+			return
+		end
+
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Load Config", "No vehicle found!") return end
+
+		local ok, Drive = GetDrive(vehicle)
+		if not ok then NotifyError("Load Config", "Could not read Drive Controller.") return end
+
+		-- Store defaults before first load so Reset still works
+		if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
+
+		local loaded, err = LoadConfig(vehicle.Name, selectedLoadConfig, Drive)
+		if loaded then
+			TryRestartVehicleUI()
+			WindUI:Notify({
+				Title   = "Vehicle Mods+ – Config Loaded",
+				Content = "[" .. vehicle.Name .. "] \"" .. selectedLoadConfig .. "\" applied.",
+				Duration = 5,
+			})
+		else
+			NotifyError("Load Config", tostring(err))
+		end
+	end,
+})
+
+-- ── Delete config ─────────────────────────────
+
+VModTab:Button({
+	Title = "Delete Selected Config",
+	Desc  = "Permanently deletes the selected config file.",
+	Callback = function()
+		if not selectedLoadConfig then
+			NotifyError("Delete Config", "No config selected.")
+			return
+		end
+
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Delete Config", "No vehicle found!") return end
+
+		local path = ConfigPath(vehicle.Name, selectedLoadConfig)
+		if isfile(path) then
+			local ok, err = pcall(delfile, path)
+			if ok then
+				WindUI:Notify({
+					Title   = "Vehicle Mods+ – Config Deleted",
+					Content = "\"" .. selectedLoadConfig .. "\" deleted.",
+					Duration = 4,
+				})
+				selectedLoadConfig = nil
+				RefreshConfigDropdown()
+			else
+				NotifyError("Delete Config", tostring(err))
+			end
+		else
+			NotifyError("Delete Config", "File not found.")
+		end
+	end,
+})
+
+-- ── Auto-load setting ─────────────────────────
+
+VModTab:Section({ Title = "Auto-Load" })
+
+VModTab:Paragraph({
+	Title = "Auto-Load",
+	Desc  = "Set one config per vehicle to load automatically\nwhenever you spawn that vehicle (character added).\n" ..
+	        "First select a config in the dropdown above, then press Set.",
+})
+
+VModTab:Button({
+	Title = "Set Auto-Load Config",
+	Desc  = "Marks the selected config as the auto-load for this vehicle.",
+	Callback = function()
+		if not selectedLoadConfig then
+			NotifyError("Auto-Load", "No config selected. Pick one from the dropdown first.")
+			return
+		end
+
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Auto-Load", "No vehicle found!") return end
+
+		SetAutoload(vehicle.Name, selectedLoadConfig)
+		WindUI:Notify({
+			Title   = "Vehicle Mods+ – Auto-Load Set",
+			Content = "[" .. vehicle.Name .. "] will auto-load \"" .. selectedLoadConfig .. "\" on spawn.",
+			Duration = 5,
+		})
+	end,
+})
+
+VModTab:Button({
+	Title = "Clear Auto-Load",
+	Desc  = "Removes the auto-load setting for the current vehicle.",
+	Callback = function()
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Auto-Load", "No vehicle found!") return end
+
+		SetAutoload(vehicle.Name, "")
+		WindUI:Notify({
+			Title   = "Vehicle Mods+ – Auto-Load Cleared",
+			Content = "[" .. vehicle.Name .. "] will no longer auto-load a config.",
+			Duration = 4,
+		})
+	end,
+})
+
+VModTab:Button({
+	Title = "Show Auto-Load Setting",
+	Desc  = "Shows which config, if any, auto-loads for the current vehicle.",
+	Callback = function()
+		local vehicle = GetVehicle()
+		if not vehicle then NotifyError("Auto-Load", "No vehicle found!") return end
+
+		local current = GetAutoload(vehicle.Name)
+		WindUI:Notify({
+			Title   = "Vehicle Mods+ – Auto-Load",
+			Content = "[" .. vehicle.Name .. "] auto-load: " .. (current or "(none)"),
+			Duration = 5,
+		})
+	end,
+})
+
+-- ─────────────────────────────────────────────
+-- Auto-load runner — fires on character added
+-- Waits for the player to enter their owned vehicle,
+-- then applies the autoload config for that vehicle.
+-- ─────────────────────────────────────────────
+
+local function TryAutoLoad(vehicleName)
+	local autoConfig = GetAutoload(vehicleName)
+	if not autoConfig or autoConfig == "" then return end
+
+	-- Give the vehicle a moment to fully stream in
+	task.delay(2, function()
+		local vehicle = GetLocalPlayerCar()
+		if not vehicle or vehicle.Name ~= vehicleName then return end
+
+		local ok, Drive = GetDrive(vehicle)
+		if not ok then return end
+
+		if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
+
+		local loaded, err = LoadConfig(vehicleName, autoConfig, Drive)
+		if loaded then
+			TryRestartVehicleUI()
+			WindUI:Notify({
+				Title   = "Vehicle Mods+ – Auto-Load",
+				Content = "[" .. vehicleName .. "] auto-loaded \"" .. autoConfig .. "\"",
+				Duration = 5,
+			})
+		end
+	end)
+end
+
+-- When a vehicle spawns for the local player, check for an auto-load config
+Vehicles.ChildAdded:Connect(function(v)
+	if v:IsA("Model") then
+		task.spawn(function()
+			while not v:GetAttribute("Owner") do task.wait() end
+			if v:GetAttribute("Owner") == LocalPlayer.Name then
+				TryAutoLoad(v.Name)
+			end
+		end)
+	end
+end)
 
 -- ══════════════════════════════════════════════
 -- CREDITS
@@ -652,3 +1036,6 @@ WindUI:Notify({
 	Content = "Vehicle Mods+ is ready.",
 	Duration = 3,
 })
+
+-- Populate the dropdown for whatever vehicle is currently spawned
+task.delay(1, RefreshConfigDropdown)
