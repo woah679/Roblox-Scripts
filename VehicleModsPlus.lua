@@ -259,7 +259,7 @@ end)
 
 local VModTab = Window:Tab({ Title = "Vehicle Mods+", Icon = "car" })
 
-VModTab:Section({ Title = Reset
+VModTab:Section({ Title = Reset })
 
 VModTab:Button({
 	Title = "Reset to Default",
