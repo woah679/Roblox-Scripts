@@ -1,19 +1,18 @@
 repeat task.wait() until _G.WindUI and _G.Window and _G.Tabs
 
-local Workspace = cloneref(game:GetService("Workspace"))
-
 local WindUI = _G.WindUI
 local Window = _G.Window
 local Tabs = _G.Tabs
 
-local Vehicles = cloneref(Workspace):WaitForChild("Vehicles")
+local Workspace = cloneref(game:GetService("Workspace"))
+local Vehicles = Workspace:WaitForChild("Vehicles")
 
 local removed = {}
 local changed = {}
-local platetext1 = "woah679"
+local text = "woah679"
 
-local removePlates = false
-local changePlates = false
+local RemovePlates = false
+local ChangePlates = false
 
 local function removePlate(car)
 	if removed[car] then return end
@@ -24,25 +23,27 @@ local function removePlate(car)
 	end
 end
 
-local function changePlate(car)
-    local platetext2 = FindFirstChild("Body"):FindFirstChild("LicensePlate"):FindFirstChildWhichIsA("SurfaceGui"):FindFirstChild("PlateText")
-	if platetext2 then
-		platetext2.Text = platetext1
+local function ChangePlate(car)
+    local PlateText = FindFirstChild("Body"):FindFirstChild("LicensePlate"):FindFirstChildWhichIsA("SurfaceGui"):FindFirstChild("PlateText")
+	if PlateText then
+		PlateText.Text = text
         changed[car] = true
 	end
 end
 
 
-if removePlates then
+if RemovePlates then
     for _, car in next, Vehicles:GetChildren() do
 	    removePlate(car)
     end
+
     Vehicles.ChildAdded:Connect(function(car)
 	    task.wait(0.5)
 	    removePlate(car)
     end)
 
-    else 
+else 
+	Vehicles.ChildAdded:Disconnect() -- check this
 end
 
 Tabs.Visuals:Input({
@@ -62,6 +63,5 @@ Tabs.VehicleMods:Toggle({
 	Value = false,
 	Callback = function(Value)
 		changePlates = Value
-		changePlate()
 	end,
 })
